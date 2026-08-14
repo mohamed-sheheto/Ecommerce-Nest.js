@@ -1,0 +1,95 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Coupon } from './coupon.schema';
+import { CreateCouponDto } from './dto/create-coupon.dto';
+import { UpdateCouponDto } from './dto/update-coupon.dto';
+
+@Injectable()
+export class CouponService {
+  constructor(@InjectModel(Coupon.name) private couponModule: Model<Coupon>) {}
+
+  private ensureNotExpired(expireDate: string | Date) {
+    if (new Date(expireDate) <= new Date()) {
+      throw new BadRequestException("Coupon can't be expired");
+    }
+  }
+
+  async create(createCouponDto: CreateCouponDto) {
+    const brand = await this.couponModule.findOne({
+      name: createCouponDto.name,
+    });
+    if (brand) {
+      throw new ConflictException('Coupon already exist');
+    }
+
+    this.ensureNotExpired(createCouponDto.expireDate);
+
+    const newCoupon = await this.couponModule.create(createCouponDto);
+    return {
+      status: 200,
+      message: 'Coupon created successfully',
+      data: newCoupon,
+    };
+  }
+
+  async findAll() {
+    const coupons = await this.couponModule.find().select('-__v');
+    return {
+      status: 200,
+      message: 'Coupons found',
+      length: coupons.length,
+      data: coupons,
+    };
+  }
+
+  async findOne(id: string) {
+    const coupon = await this.couponModule.findById(id).select('-__v');
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    return {
+      status: 200,
+      message: 'Coupon found',
+      data: coupon,
+    };
+  }
+
+  async update(id: string, updateCouponDto: UpdateCouponDto) {
+    const coupon = await this.couponModule.findById(id).select('-__v');
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    if (updateCouponDto.expireDate) {
+      this.ensureNotExpired(updateCouponDto.expireDate);
+    }
+
+    const updatedCoupon = await this.couponModule.findByIdAndUpdate(
+      id,
+      updateCouponDto,
+      {
+        new: true,
+      },
+    );
+    return {
+      status: 200,
+      message: 'Coupon updated successfully',
+      data: updatedCoupon,
+    };
+  }
+
+  async remove(id: string): Promise<void> {
+    const coupon = await this.couponModule.findById(id).select('-__v');
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+    await this.couponModule.findByIdAndDelete(id);
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": false,
+    "assets": [
+      {
+        "include": "i18n/**/*",
+        "watchAssets": true,
+        "outDir": "dist/apps/api"
+      }
+    ]
+  }
+}
